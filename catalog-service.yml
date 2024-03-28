@@ -3,12 +3,78 @@ server:
 spring:
   application:
     name: catalog-service
+  zipkin:
+    base-url: http://localhost:9411/
+    enabled: true
+  rabbitmq:
+    username: guest
+    password: guest
+    host: localhost
+    port: 5672
+  mongodb:
+    embedded:
+      version: 4.0.2
+  data:
+    mongodb:
+      database: catalog_database
+      port: 27017
 eureka:
   instance:
-    hostname: localhost
-    instance-id: ${spring.application.name}:${spring.application.instance_id:${random.value}}
+  prefer-ip-address: true
+  lease-renewal-interval-in-seconds: 5
+  lease-expiration-duration-in-seconds: 10
+  hostname: localhost
+  instance-id: ${spring.application.name}:${spring.application.instance_id:${random.value}}
   client:
     registerWithEureka: true
     fetchRegistry: true
     serviceUrl:
-      defaultZone: http://localhost:8761/eureka/
+      defaultZone: http://localhost:8761/eureka
+
+queue:
+  movie:
+    name: MovieQueue
+  serie:
+    name: SerieQueue
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: '*'
+  health:
+    circuitbreakers:
+      enabled: true
+  endpoint:
+    health:
+      show-details: always
+resilience4j:
+  circuitbreaker:
+    instances:
+      movies:
+        slidingWindowType: COUNT_BASED
+        slidingWindowSize: 5
+        failureRateThreshold: 50
+        #        tiempo de espera en milisegundos en estado abierto
+        waitDurationInOpenState: 15000
+        #        para ver si el servicio se recuperó, le voy a decir, esperá 3 llamadas para poder decir, pasalo a estado cerrado
+        permittedNumberOfCallsInHalfOpenState: 3
+        #        vamos a definir que hacemos con el estado del servicio cuando se abrio
+        #        esto esa para ver la informacion del servicio en actuator
+        registerHealthIndicator: true
+        #        aca le decimos marca el servicio como down q no lo pueda ver nadie, esta en false porque tenemos q ver
+        #         como pasamos el serv a up
+        allowHealthIndicatorToFail: false
+        automaticTransitionFromOpenToHalfOpenEnabled: true
+  #     HASTA ACA ESTA TERMINADO EL EJERCICIO (este q vamos a ver es otro módulo de resilience4j)
+  #  Lo que vemos en el retry es cuanto tiempo queremos esperar entre cada uno de los reintentos
+  retry:
+    instances:
+      students:
+        waitDuration: 1000
+        #        Le decimos la cantidad de reintentos que queremos hacer
+        maxAttempts: 3
+        #        y la excepción contra la q queremos reintentar
+        retryExceptions:
+          - feign.FeignException$InternalServerError
+
